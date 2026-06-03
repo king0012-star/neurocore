@@ -167,91 +167,124 @@
         document.getElementById('toBalance')?.innerText = userNexBalance.toFixed(2);
     }
     
-    // ========== 钱包接入 (BSC) ==========
-    let walletConnected = false;
-    let walletAddress = '';
-    let bnbBalance = 0;
-    let userNexBalance = 5000;
-    let userBnbBalance = 2.35;
-    
-    function getProvider() { 
-        if (window.BinanceChain) return window.BinanceChain;
-        if (window.ethereum) return window.ethereum;
-        return null;
-    }
-    
-    async function connectWallet() { 
-        const p = getProvider(); 
-        if (!p) { 
-            alert('请安装币安链钱包或MetaMask并切换到BSC\n\n推荐安装：\n1. 币安链钱包扩展\n2. MetaMask + 配置BSC网络'); 
-            window.open('https://www.bnbchain.org/en/binance-chain-wallet', '_blank'); 
-            return; 
+    // ========== 钱包接入 (BSC) - 修复版 ==========
+let walletConnected = false;
+let walletAddress = '';
+let bnbBalance = 0;
+let userNexBalance = 5000;
+let userBnbBalance = 2.35;
+
+// 获取钱包 provider（正确检测 window.ethereum）
+function getProvider() { 
+    // 注意：是 window.ethereum，不是 window.Ethereum
+    if (window.ethereum) return window.ethereum;
+    return null;
+}
+
+// 连接钱包主函数
+async function connectWallet() { 
+    const provider = getProvider(); 
+    if (!provider) { 
+        alert('请安装币安链钱包或MetaMask并切换到BSC\n\n推荐安装：\n1. 币安链钱包扩展\n2. MetaMask + 配置BSC网络'); 
+        window.open('https://www.bnbchain.org/en/binance-chain-wallet', '_blank'); 
+        return; 
+    } 
+    try { 
+        // 请求账户权限（关键步骤）
+        const accounts = await provider.request({ method: 'eth_requestAccounts' }); 
+        if (accounts && accounts.length > 0) { 
+            walletAddress = accounts[0]; 
+            walletConnected = true; 
+            
+            // 更新UI显示
+            document.getElementById('walletBtnText').innerText = walletAddress.slice(0,6) + '...' + walletAddress.slice(-4); 
+            document.getElementById('walletAddressDisplay').innerText = walletAddress.slice(0,10) + '...' + walletAddress.slice(-8); 
+            document.getElementById('walletInfoBar').classList.remove('hidden'); 
+            
+            // 获取链ID
+            const chainId = await provider.request({ method: 'eth_chainId' }); 
+            const chainIdNum = parseInt(chainId, 16);
+            let netText = '';
+            if (chainIdNum === 56) netText = '✅ BSC Mainnet';
+            else if (chainIdNum === 97) netText = '⚠️ BSC Testnet';
+            else netText = '⚠️ 请切换BSC网络 (当前: ' + chainIdNum + ')';
+            document.getElementById('networkDisplay').innerHTML = netText; 
+            
+            // 获取BNB余额
+            const hexBalance = await provider.request({ method: 'eth_getBalance', params: [walletAddress, 'latest'] }); 
+            bnbBalance = parseInt(hexBalance, 16) / 1e18; 
+            userBnbBalance = bnbBalance; 
+            document.getElementById('bnbBalanceDisplay').innerText = bnbBalance.toFixed(4); 
+            document.getElementById('nexBalanceDisplay').innerText = userNexBalance.toFixed(2); 
+            
+            showToast('✅ 钱包连接成功！');
         } 
-        try { 
-            const acc = await p.request({ method: 'eth_requestAccounts' }); 
-            if (acc && acc.length) { 
-                walletAddress = acc[0]; 
-                walletConnected = true; 
-                document.getElementById('walletBtnText').innerText = walletAddress.slice(0,6) + '...' + walletAddress.slice(-4); 
-                document.getElementById('walletAddressDisplay').innerText = walletAddress.slice(0,10) + '...' + walletAddress.slice(-8); 
-                document.getElementById('walletInfoBar').classList.remove('hidden'); 
-                
-                const cid = await p.request({ method: 'eth_chainId' }); 
-                const net = parseInt(cid,16) === 56 ? '✅ BSC Mainnet' : (parseInt(cid,16) === 97 ? '⚠️ BSC Testnet' : '⚠️ 请切换BSC网络'); 
-                document.getElementById('networkDisplay').innerHTML = net; 
-                
-                const hex = await p.request({ method: 'eth_getBalance', params: [walletAddress, 'latest'] }); 
-                bnbBalance = parseInt(hex, 16) / 1e18; 
-                userBnbBalance = bnbBalance; 
-                document.getElementById('bnbBalanceDisplay').innerText = bnbBalance.toFixed(4); 
-                document.getElementById('nexBalanceDisplay').innerText = userNexBalance.toFixed(2); 
-                updateUserBalanceUI();
-                
-                // 显示成功提示
-                showToast('✅ 钱包连接成功！');
-            } 
-        } catch(e) { 
-            console.error(e);
+    } catch(e) { 
+        console.error('连接钱包错误:', e);
+        // 用户拒绝授权时的错误处理
+        if (e.code === 4001) {
+            alert('您拒绝了连接请求');
+        } else {
             alert('连接钱包失败: ' + (e.message || '未知错误')); 
-        } 
+        }
+    } 
+}
+
+function disconnectWallet() { 
+    walletConnected = false; 
+    walletAddress = '';
+    document.getElementById('walletBtnText').innerText = '连接钱包'; 
+    document.getElementById('walletInfoBar').classList.add('hidden'); 
+    userBnbBalance = 2.35; 
+    userNexBalance = 5000; 
+    showToast('👋 钱包已断开');
+}
+
+// 绑定钱包按钮事件（确保DOM加载完成后绑定）
+document.addEventListener('DOMContentLoaded', function() {
+    const walletBtn = document.getElementById('walletStatus');
+    if (walletBtn) {
+        walletBtn.onclick = connectWallet;
     }
-    
-    function disconnectWallet() { 
-        walletConnected = false; 
-        walletAddress = '';
-        document.getElementById('walletBtnText').innerText = '连接钱包'; 
-        document.getElementById('walletInfoBar').classList.add('hidden'); 
-        userBnbBalance = 2.35; 
-        userNexBalance = 5000; 
-        updateUserBalanceUI();
-        showToast('👋 钱包已断开');
+    const disconnectBtn = document.getElementById('disconnectWalletBtn');
+    if (disconnectBtn) {
+        disconnectBtn.addEventListener('click', disconnectWallet);
     }
+});
+
+// 监听钱包账户切换（非常重要！）
+const provider = getProvider();
+if (provider && provider.on) {
+    provider.on('accountsChanged', (accounts) => {
+        if (accounts.length > 0) {
+            walletAddress = accounts[0];
+            document.getElementById('walletBtnText').innerText = walletAddress.slice(0,6) + '...' + walletAddress.slice(-4);
+            document.getElementById('walletAddressDisplay').innerText = walletAddress.slice(0,10) + '...' + walletAddress.slice(-8);
+            showToast('🔄 账户已切换');
+            // 重新获取余额
+            provider.request({ method: 'eth_getBalance', params: [walletAddress, 'latest'] }).then(hex => {
+                bnbBalance = parseInt(hex, 16) / 1e18;
+                userBnbBalance = bnbBalance;
+                document.getElementById('bnbBalanceDisplay').innerText = bnbBalance.toFixed(4);
+            });
+        } else {
+            disconnectWallet();
+        }
+    });
     
-    // 绑定钱包按钮事件
-    document.getElementById('walletStatus').onclick = connectWallet;
-    document.getElementById('disconnectWalletBtn')?.addEventListener('click', disconnectWallet);
-    
-    // 监听钱包账户切换
-    const provider = getProvider();
-    if (provider && provider.on) {
-        provider.on('accountsChanged', (accounts) => {
-            if (accounts.length > 0) {
-                walletAddress = accounts[0];
-                document.getElementById('walletBtnText').innerText = walletAddress.slice(0,6) + '...' + walletAddress.slice(-4);
-                document.getElementById('walletAddressDisplay').innerText = walletAddress.slice(0,10) + '...' + walletAddress.slice(-8);
-                showToast('🔄 账户已切换');
-                // 重新获取余额
-                provider.request({ method: 'eth_getBalance', params: [walletAddress, 'latest'] }).then(hex => {
-                    bnbBalance = parseInt(hex, 16) / 1e18;
-                    userBnbBalance = bnbBalance;
-                    document.getElementById('bnbBalanceDisplay').innerText = bnbBalance.toFixed(4);
-                });
-            } else {
-                disconnectWallet();
-            }
-        });
-        provider.on('chainChanged', () => { window.location.reload(); });
-    }
+    provider.on('chainChanged', (chainId) => {
+        // 链切换后刷新页面
+        window.location.reload();
+    });
+}
+
+function showToast(msg) { 
+    let t = document.createElement('div'); 
+    t.className = 'toast'; 
+    t.innerText = msg; 
+    document.body.appendChild(t); 
+    setTimeout(() => t.remove(), 3000); 
+}
     
     // ========== 柱状图表 ==========
     const ctx = document.getElementById('volumeChart').getContext('2d');
