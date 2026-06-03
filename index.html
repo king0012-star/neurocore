@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
     <title>NeuroCore · 星穹协议</title>
-    <meta http-equiv="Content-Security-Policy" content="script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdn.jsdelivr.net https://fonts.googleapis.com https://cdnjs.cloudflare.com https://fonts.gstatic.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://cdnjs.cloudflare.com; font-src 'self' https://fonts.gstatic.com https://cdnjs.cloudflare.com;">
+    <meta http-equiv="Content-Security-Policy" content="script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdn.jsdelivr.net https://fonts.googleapis.com https://cdnjs.cloudflare.com;">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
@@ -12,13 +12,12 @@
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body { background: #0a0c1a; font-family: 'Inter', sans-serif; color: #eef5ff; }
         .container { max-width: 1200px; margin: 0 auto; padding: 2rem; text-align: center; }
-        .glass-panel { background: rgba(8,20,36,0.75); backdrop-filter: blur(14px); border-radius: 2rem; padding: 2rem; margin-top: 2rem; border: 1px solid rgba(0,210,255,0.3); }
+        .glass-panel { background: rgba(8,20,36,0.75); backdrop-filter: blur(14px); border-radius: 2rem; padding: 2rem; margin-top: 2rem; }
         .gradient-neon { background: linear-gradient(125deg, #00f2fe, #a855f7); background-clip: text; -webkit-background-clip: text; color: transparent; }
-        .btn-primary { background: linear-gradient(95deg, #0cf, #7c3aed); border: none; padding: 1rem 2rem; border-radius: 2rem; color: white; cursor: pointer; font-size: 1rem; margin-top: 1rem; transition: 0.2s; }
-        .btn-primary:hover { transform: scale(1.02); box-shadow: 0 0 15px #0cf; }
-        .wallet-btn { background: #1e293b; border-radius: 2rem; padding: 0.5rem 1rem; cursor: pointer; display: inline-flex; align-items: center; gap: 8px; transition: 0.2s; border: 1px solid #0cf3; }
-        .wallet-btn:hover { background: #2d3a5e; border-color: #0cf; }
-        .toast { position: fixed; bottom: 20px; right: 20px; background: #1e293b; padding: 0.5rem 1rem; border-radius: 2rem; border-left: 3px solid #0cf; z-index: 1000; animation: fadeOut 3s forwards; }
+        .btn-primary { background: linear-gradient(95deg, #0cf, #7c3aed); border: none; padding: 1rem 2rem; border-radius: 2rem; color: white; cursor: pointer; font-size: 1rem; margin-top: 1rem; }
+        .wallet-btn { background: #1e293b; border-radius: 2rem; padding: 0.5rem 1rem; cursor: pointer; display: inline-flex; align-items: center; gap: 8px; }
+        .wallet-btn:hover { background: #2d3a5e; }
+        .toast { position: fixed; bottom: 20px; right: 20px; background: #1e293b; padding: 0.5rem 1rem; border-radius: 2rem; border-left: 3px solid #0cf; animation: fadeOut 3s forwards; }
         @keyframes fadeOut { 0% { opacity: 1; } 70% { opacity: 1; } 100% { opacity: 0; visibility: hidden; } }
         .hidden { display: none; }
         .flex { display: flex; }
@@ -27,11 +26,6 @@
         .gap-3 { gap: 0.75rem; }
         .mb-4 { margin-bottom: 1rem; }
         .mt-2 { margin-top: 0.5rem; }
-        .text-sm { font-size: 0.875rem; }
-        .text-cyan-300 { color: #0cf; }
-        .text-green-400 { color: #4ade80; }
-        .spinner { display: inline-block; width: 14px; height: 14px; border: 2px solid #fff; border-top-color: transparent; border-radius: 50%; animation: spin 0.8s linear infinite; margin-right: 6px; }
-        @keyframes spin { to { transform: rotate(360deg); } }
     </style>
 </head>
 <body>
@@ -47,29 +41,28 @@
     </div>
 
     <div id="walletInfoBar" class="glass-panel hidden">
-        <p>✅ 已连接: <span id="walletAddressDisplay" class="text-cyan-300"></span></p>
-        <p class="mt-2">💰 BNB余额: <span id="bnbBalanceDisplay" class="text-green-400">0.00</span> BNB</p>
-        <p>🎴 NEX余额: <span id="nexBalanceDisplay" class="text-cyan-300">5000.00</span> NEX</p>
-        <button id="disconnectWalletBtn" class="btn-primary" style="padding: 0.5rem 1rem; font-size: 0.8rem; margin-top: 1rem;">断开钱包</button>
+        <p>✅ 已连接: <span id="walletAddressDisplay"></span></p>
+        <p>💰 BNB余额: <span id="bnbBalanceDisplay">0.00</span></p>
+        <p>🎴 NEX余额: <span id="nexBalanceDisplay">5000.00</span></p>
+        <button id="disconnectWalletBtn" class="btn-primary" style="padding: 0.5rem 1rem; font-size: 0.8rem;">断开钱包</button>
     </div>
 
     <div class="glass-panel">
         <h1>🎲 NeuroCore</h1>
         <p style="margin: 1rem 0;">总量 2100 万 | 四重通缩 | 立方暴块 | 卡牌质押</p>
-        <p class="text-sm">✨ 网站已部署成功 ✨</p>
+        <p>✨ 网站部署成功！✨</p>
         <button class="btn-primary" id="demoBtn">开始体验</button>
     </div>
-    
-    <footer style="margin-top: 2rem; font-size: 0.7rem; opacity: 0.6;">
-        NeuroCore · 基于币安链的去中心化协议
-    </footer>
+    <footer style="margin-top: 2rem; font-size: 0.7rem;">NeuroCore · 基于币安链的去中心化协议</footer>
 </div>
 
 <script>
 (function() {
-    'use strict';
+    // 钱包连接状态
+    let walletConnected = false;
+    let walletAddress = '';
     
-    // DOM 元素
+    // 获取DOM元素
     const walletStatus = document.getElementById('walletStatus');
     const walletBtnText = document.getElementById('walletBtnText');
     const walletInfoBar = document.getElementById('walletInfoBar');
@@ -78,10 +71,6 @@
     const disconnectBtn = document.getElementById('disconnectWalletBtn');
     const demoBtn = document.getElementById('demoBtn');
     
-    // 状态变量
-    let walletConnected = false;
-    let currentAddress = '';
-    
     // 获取钱包 provider
     function getProvider() {
         if (window.ethereum) return window.ethereum;
@@ -89,141 +78,99 @@
         return null;
     }
     
-    // 显示提示消息
-    function showToast(message, isError) {
-        var toast = document.createElement('div');
-        toast.className = 'toast';
-        toast.style.borderLeftColor = isError ? '#ef4444' : '#0cf';
-        toast.innerHTML = (isError ? '⚠️ ' : '✅ ') + message;
-        document.body.appendChild(toast);
-        setTimeout(function() { if (toast && toast.remove) toast.remove(); }, 3000);
-    }
-    
-    // 更新UI显示
-    function updateUI(address, balance) {
-        if (address) {
-            walletBtnText.innerText = address.slice(0,6) + '...' + address.slice(-4);
-            walletAddressDisplay.innerText = address.slice(0,10) + '...' + address.slice(-8);
-            walletInfoBar.classList.remove('hidden');
+    // 连接钱包
+    async function connectWallet() {
+        const provider = getProvider();
+        
+        if (!provider) {
+            alert('未检测到钱包！\n\n请安装 MetaMask 或币安链钱包');
+            window.open('https://metamask.io/download/', '_blank');
+            return;
         }
-        if (balance !== undefined) {
-            bnbBalanceDisplay.innerText = balance.toFixed(4);
+        
+        try {
+            walletBtnText.innerHTML = '<i class="fas fa-spinner fa-spin"></i> 连接中...';
+            
+            const accounts = await provider.request({ method: 'eth_requestAccounts' });
+            
+            if (accounts && accounts.length > 0) {
+                walletAddress = accounts[0];
+                walletConnected = true;
+                
+                walletBtnText.innerText = walletAddress.slice(0,6) + '...' + walletAddress.slice(-4);
+                walletAddressDisplay.innerText = walletAddress.slice(0,10) + '...' + walletAddress.slice(-8);
+                walletInfoBar.classList.remove('hidden');
+                
+                // 获取BNB余额
+                try {
+                    const hexBalance = await provider.request({ 
+                        method: 'eth_getBalance', 
+                        params: [walletAddress, 'latest'] 
+                    });
+                    const balance = parseInt(hexBalance, 16) / 1e18;
+                    bnbBalanceDisplay.innerText = balance.toFixed(4);
+                } catch(e) {
+                    console.log('获取余额失败', e);
+                }
+                
+                showToast('✅ 钱包连接成功！');
+            }
+        } catch(error) {
+            console.error('连接错误:', error);
+            if (error.code !== 4001) {
+                alert('连接失败: ' + (error.message || '未知错误'));
+            }
+            walletBtnText.innerText = '连接钱包';
         }
     }
     
     // 断开钱包
     function disconnectWallet() {
         walletConnected = false;
-        currentAddress = '';
+        walletAddress = '';
         walletBtnText.innerText = '连接钱包';
         walletInfoBar.classList.add('hidden');
-        showToast('钱包已断开');
+        showToast('👋 钱包已断开');
     }
     
-    // 连接钱包
-    async function connectWallet() {
-        var provider = getProvider();
-        
-        if (!provider) {
-            showToast('请先安装 MetaMask 或币安链钱包', true);
-            setTimeout(function() {
-                window.open('https://metamask.io/download/', '_blank');
-            }, 1000);
-            return;
-        }
-        
-        try {
-            // 显示加载状态
-            walletBtnText.innerHTML = '<span class="spinner"></span> 连接中...';
-            
-            // 请求账户
-            var accounts = await provider.request({ method: 'eth_requestAccounts' });
-            
-            if (accounts && accounts.length > 0) {
-                currentAddress = accounts[0];
-                walletConnected = true;
-                
-                // 获取 BNB 余额
-                var balance = 0;
-                try {
-                    var hexBalance = await provider.request({ 
-                        method: 'eth_getBalance', 
-                        params: [currentAddress, 'latest'] 
-                    });
-                    balance = parseInt(hexBalance, 16) / 1e18;
-                } catch(e) {
-                    console.log('获取余额失败:', e);
-                }
-                
-                updateUI(currentAddress, balance);
-                showToast('钱包连接成功！');
-            }
-        } catch(error) {
-            console.error('连接错误:', error);
-            if (error.code !== 4001) {
-                showToast('连接失败: ' + (error.message || '未知错误'), true);
-            }
-            walletBtnText.innerText = '连接钱包';
-        }
-    }
-    
-    // 监听账户变化
-    function setupWalletEvents() {
-        var provider = getProvider();
-        if (provider && typeof provider.on === 'function') {
-            provider.on('accountsChanged', function(accounts) {
-                if (accounts && accounts.length > 0) {
-                    currentAddress = accounts[0];
-                    walletBtnText.innerText = currentAddress.slice(0,6) + '...' + currentAddress.slice(-4);
-                    walletAddressDisplay.innerText = currentAddress.slice(0,10) + '...' + currentAddress.slice(-8);
-                    showToast('账户已切换');
-                } else {
-                    disconnectWallet();
-                }
-            });
-        }
+    // 显示提示
+    function showToast(msg) {
+        const t = document.createElement('div');
+        t.className = 'toast';
+        t.innerText = msg;
+        document.body.appendChild(t);
+        setTimeout(function() { t.remove(); }, 3000);
     }
     
     // 绑定事件
-    function bindEvents() {
-        if (walletStatus) {
-            walletStatus.addEventListener('click', connectWallet);
-        }
-        if (disconnectBtn) {
-            disconnectBtn.addEventListener('click', disconnectWallet);
-        }
-        if (demoBtn) {
-            demoBtn.addEventListener('click', function() {
-                if (walletConnected) {
-                    showToast('欢迎使用 NeuroCore！');
-                } else {
-                    showToast('请先连接钱包', true);
-                }
-            });
-        }
+    if (walletStatus) {
+        walletStatus.addEventListener('click', connectWallet);
+    }
+    if (disconnectBtn) {
+        disconnectBtn.addEventListener('click', disconnectWallet);
+    }
+    if (demoBtn) {
+        demoBtn.addEventListener('click', function() {
+            showToast('🎉 NeuroCore 欢迎您！');
+        });
     }
     
-    // 初始化
-    function init() {
-        bindEvents();
-        setupWalletEvents();
-        console.log('NeuroCore 已启动');
-        
-        // 检测是否有已连接的钱包
-        setTimeout(function() {
-            var provider = getProvider();
-            if (provider && provider.selectedAddress) {
-                connectWallet();
+    // 监听账户变化
+    const provider = getProvider();
+    if (provider && provider.on) {
+        provider.on('accountsChanged', function(accounts) {
+            if (accounts && accounts.length > 0) {
+                walletAddress = accounts[0];
+                walletBtnText.innerText = walletAddress.slice(0,6) + '...' + walletAddress.slice(-4);
+                walletAddressDisplay.innerText = walletAddress.slice(0,10) + '...' + walletAddress.slice(-8);
+                showToast('🔄 账户已切换');
+            } else {
+                disconnectWallet();
             }
-        }, 500);
+        });
     }
     
-    // 页面加载完成后初始化
-    if (document.readyState === 'loading') {
-        document.addEventListener('DOMContentLoaded', init);
-    } else {
-        init();
-    }
+    console.log('NeuroCore 已启动');
 })();
 </script>
 </body>
