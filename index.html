@@ -3,12 +3,11 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-    <title>NeuroCore · 多矿池质押 | 链上实时余额+数据库</title>
-    <meta name="description" content="NeuroCore - 读取币安链USDT合约真实余额，数据库保存用户数据">
+    <title>NeuroCore · 多矿池质押 | 地址统计+白皮书</title>
+    <meta name="description" content="NeuroCore - 链上实时余额，地址统计，白皮书展示">
     <link href="https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,300;400;500;600;700;800;900&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
-    <!-- Web3.js 用于读取链上 USDT 余额 -->
     <script src="https://cdn.jsdelivr.net/npm/web3@1.10.0/dist/web3.min.js"></script>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -41,7 +40,7 @@
         .wallet-option:hover { background: #2d3a5e; }
         footer { font-size: 0.7rem; text-align: center; border-top: 1px solid rgba(0,242,254,0.2); padding: 1rem 0 0; margin-top: 1rem; }
         @media (max-width: 780px) { .cubes-grid { gap: 0.5rem; } .cube { width: 1.8cm; height: 1.8cm; } }
-        .link-bar a { margin: 0 0.8rem; text-decoration: none; color: #0cf; }
+        .link-bar a { margin: 0 0.8rem; text-decoration: none; color: #0cf; cursor: pointer; }
         .chart-container { background: #0f172f; border-radius: 1.2rem; padding: 0.8rem; }
         .wallet-btn { background: #1e293b; border-radius: 2rem; padding: 0.4rem 1rem; cursor: pointer; transition: 0.2s; display: flex; align-items: center; gap: 8px; font-size: 0.85rem; border: 1px solid #0cf3; }
         .wallet-btn:hover { background: #2d3a5e; border-color: #0cf; }
@@ -79,6 +78,8 @@
         .font-mono { font-family: monospace; }
         .owner-panel { display: none; }
         .owner-panel.show { display: block; }
+        .modal { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); backdrop-filter: blur(8px); z-index: 1000; display: flex; align-items: center; justify-content: center; }
+        .modal-content { background: #0f172f; border-radius: 2rem; max-width: 600px; width: 90%; max-height: 80vh; overflow-y: auto; padding: 1.5rem; border: 1px solid #0cf; }
     </style>
 </head>
 <body>
@@ -89,12 +90,12 @@
         <div class="flex items-center gap-3">
             <i class="fas fa-cube" style="font-size: 2rem; color: #0cf;"></i>
             <span style="font-weight: 800; font-size: 1.9rem;">Neuro<span class="gradient-neon">Core</span></span>
-            <span class="badge-percent"><i class="fas fa-database"></i> 链上实时+数据库</span>
+            <span class="badge-percent"><i class="fas fa-database"></i> 地址统计+白皮书</span>
         </div>
         <div class="flex items-center gap-3">
             <div class="link-bar hidden md:flex">
-                <a href="#" id="whitepaperLink"><i class="fas fa-file-alt"></i> 白皮书</a>
-                <a href="#" id="docsLink"><i class="fas fa-book"></i> 文档</a>
+                <a id="whitepaperBtn"><i class="fas fa-file-alt"></i> 白皮书</a>
+                <a id="docsBtn"><i class="fas fa-book"></i> 文档</a>
             </div>
             <div class="wallet-selector" id="walletSelector">
                 <div id="walletStatus" class="wallet-btn">
@@ -110,7 +111,7 @@
         </div>
     </div>
 
-    <!-- 钱包信息栏 -->
+    <!-- 钱包信息栏 + 地址统计 -->
     <div id="walletInfoBar" class="glass-panel py-2 px-4 mb-4 hidden">
         <div class="flex justify-between items-center text-sm flex-wrap gap-2">
             <div><i class="fas fa-link text-cyan-300"></i> <span id="walletAddressDisplay" class="font-mono"></span></div>
@@ -122,13 +123,26 @@
         </div>
     </div>
 
+    <!-- 地址统计面板 -->
+    <div class="glass-panel">
+        <h3><i class="fas fa-chart-simple"></i> 地址统计 & 空投记录</h3>
+        <div class="grid grid-cols-2 md:grid-cols-4 gap-3 text-center">
+            <div class="bg-black/30 p-2 rounded"><span class="text-cyan-300 text-lg font-bold" id="totalUsers">0</span><br>总连接地址</div>
+            <div class="bg-black/30 p-2 rounded"><span class="text-cyan-300 text-lg font-bold" id="todayActive">0</span><br>今日活跃</div>
+            <div class="bg-black/30 p-2 rounded"><span class="text-cyan-300 text-lg font-bold" id="totalAirdrop">0</span><br>空投次数</div>
+            <div class="bg-black/30 p-2 rounded"><span class="text-cyan-300 text-lg font-bold" id="totalNexDistributed">0</span><br>已分发NEX</div>
+        </div>
+        <div class="mt-2"><button id="airdropBtn" class="btn-primary text-xs py-1 px-3">🎁 执行空投 (主钱包)</button><span class="text-xs text-yellow-300 ml-2">仅主钱包可操作</span></div>
+        <div id="airdropLog" class="text-xs mt-2 max-h-24 overflow-y-auto bg-black/30 p-1 rounded"></div>
+    </div>
+
     <!-- 主钱包控制面板 -->
     <div id="ownerPanel" class="glass-panel owner-panel">
         <h3><i class="fas fa-crown text-yellow-400"></i> 矿池控制面板</h3>
         <div class="grid md:grid-cols-3 gap-3">
-            <div class="bg-black/30 p-3 rounded-xl"><div class="flex justify-between"><span><i class="fab fa-binance"></i> BNB矿池</span><span>总量: <span id="ownerBnbPool">1250</span> BNB</span></div><div class="flex gap-2 mt-2"><input type="number" id="ownerBnbAmount" placeholder="增减" class="bg-black/50 border rounded p-1 text-sm w-full"><button id="addBnbPoolBtn" class="btn-primary text-xs py-1 px-2">增加</button><button id="removeBnbPoolBtn" class="btn-outline text-xs py-1 px-2">减少</button></div></div>
-            <div class="bg-black/30 p-3 rounded-xl"><div class="flex justify-between"><span><i class="fas fa-dollar-sign"></i> USDT矿池</span><span>总量: <span id="ownerUsdtPool">250000</span> USDT</span></div><div class="flex gap-2 mt-2"><input type="number" id="ownerUsdtAmount" placeholder="增减" class="bg-black/50 border rounded p-1 text-sm w-full"><button id="addUsdtPoolBtn" class="btn-primary text-xs py-1 px-2">增加</button><button id="removeUsdtPoolBtn" class="btn-outline text-xs py-1 px-2">减少</button></div></div>
-            <div class="bg-black/30 p-3 rounded-xl"><div class="flex justify-between"><span><i class="fas fa-coins"></i> NEX矿池</span><span>总量: <span id="ownerNexPool">2100000</span> NEX</span></div><div class="flex gap-2 mt-2"><input type="number" id="ownerNexAmount" placeholder="增减" class="bg-black/50 border rounded p-1 text-sm w-full"><button id="addNexPoolBtn" class="btn-primary text-xs py-1 px-2">增加</button><button id="removeNexPoolBtn" class="btn-outline text-xs py-1 px-2">减少</button></div></div>
+            <div class="bg-black/30 p-2 rounded"><div><i class="fab fa-binance"></i> BNB矿池: <span id="ownerBnbPool">1250</span></div><input type="number" id="ownerBnbAmount" placeholder="数量" class="bg-black/50 border rounded p-1 text-sm w-24"><button id="addBnbPoolBtn" class="btn-primary text-xs py-1 px-2">增加</button><button id="removeBnbPoolBtn" class="btn-outline text-xs py-1 px-2">减少</button></div>
+            <div class="bg-black/30 p-2 rounded"><div><i class="fas fa-dollar-sign"></i> USDT矿池: <span id="ownerUsdtPool">250000</span></div><input type="number" id="ownerUsdtAmount" placeholder="数量" class="bg-black/50 border rounded p-1 text-sm w-24"><button id="addUsdtPoolBtn" class="btn-primary text-xs py-1 px-2">增加</button><button id="removeUsdtPoolBtn" class="btn-outline text-xs py-1 px-2">减少</button></div>
+            <div class="bg-black/30 p-2 rounded"><div><i class="fas fa-coins"></i> NEX矿池: <span id="ownerNexPool">2100000</span></div><input type="number" id="ownerNexAmount" placeholder="数量" class="bg-black/50 border rounded p-1 text-sm w-24"><button id="addNexPoolBtn" class="btn-primary text-xs py-1 px-2">增加</button><button id="removeNexPoolBtn" class="btn-outline text-xs py-1 px-2">减少</button></div>
         </div>
     </div>
 
@@ -136,103 +150,220 @@
     <div class="glass-panel">
         <h3><i class="fas fa-piggy-bank"></i> 用户质押矿池 (每日产出0.5%)</h3>
         <div class="grid md:grid-cols-3 gap-3">
-            <div class="bg-black/30 p-3 rounded-xl"><div><i class="fab fa-binance"></i> BNB矿池 APY:186%</div><div>池总量: <span id="bnbPoolTotal">1250</span> | 我的: <span id="myBnbStake">0</span></div><div class="flex gap-1 mt-1"><input type="number" id="bnbStakeAmount" placeholder="数量" class="bg-black/50 border rounded p-1 text-sm w-20"><button id="stakeBnbBtn" class="btn-primary text-xs py-1 px-1">质押</button><button id="unstakeBnbBtn" class="btn-outline text-xs py-1 px-1">赎回</button></div><div>待领取: <span id="bnbReward">0</span> NEX</div></div>
-            <div class="bg-black/30 p-3 rounded-xl"><div><i class="fas fa-dollar-sign"></i> USDT矿池 APY:165%</div><div>池总量: <span id="usdtPoolTotal">250000</span> | 我的: <span id="myUsdtStake">0</span></div><div class="flex gap-1 mt-1"><input type="number" id="usdtStakeAmount" placeholder="数量" class="bg-black/50 border rounded p-1 text-sm w-20"><button id="stakeUsdtBtn" class="btn-primary text-xs py-1 px-1">质押</button><button id="unstakeUsdtBtn" class="btn-outline text-xs py-1 px-1">赎回</button></div><div>待领取: <span id="usdtReward">0</span> NEX</div></div>
-            <div class="bg-black/30 p-3 rounded-xl"><div><i class="fas fa-coins"></i> NEX矿池 APY:220%</div><div>池总量: <span id="nexPoolTotal">2100000</span> | 我的: <span id="myNexStake">0</span></div><div class="flex gap-1 mt-1"><input type="number" id="nexStakeAmount" placeholder="数量" class="bg-black/50 border rounded p-1 text-sm w-20"><button id="stakeNexBtn" class="btn-primary text-xs py-1 px-1">质押</button><button id="unstakeNexBtn" class="btn-outline text-xs py-1 px-1">赎回</button></div><div>待领取: <span id="nexReward">0</span> NEX</div></div>
+            <div class="bg-black/30 p-2 rounded"><div><i class="fab fa-binance"></i> BNB池 APY:186%</div><div>池: <span id="bnbPoolTotal">1250</span> | 我的: <span id="myBnbStake">0</span></div><div class="flex gap-1"><input type="number" id="bnbStakeAmount" class="bg-black/50 border rounded p-1 text-sm w-20"><button id="stakeBnbBtn" class="btn-primary text-xs py-1 px-1">质押</button><button id="unstakeBnbBtn" class="btn-outline text-xs py-1 px-1">赎回</button></div><div>待领: <span id="bnbReward">0</span> NEX</div></div>
+            <div class="bg-black/30 p-2 rounded"><div><i class="fas fa-dollar-sign"></i> USDT池 APY:165%</div><div>池: <span id="usdtPoolTotal">250000</span> | 我的: <span id="myUsdtStake">0</span></div><div class="flex gap-1"><input type="number" id="usdtStakeAmount" class="bg-black/50 border rounded p-1 text-sm w-20"><button id="stakeUsdtBtn" class="btn-primary text-xs py-1 px-1">质押</button><button id="unstakeUsdtBtn" class="btn-outline text-xs py-1 px-1">赎回</button></div><div>待领: <span id="usdtReward">0</span> NEX</div></div>
+            <div class="bg-black/30 p-2 rounded"><div><i class="fas fa-coins"></i> NEX池 APY:220%</div><div>池: <span id="nexPoolTotal">2100000</span> | 我的: <span id="myNexStake">0</span></div><div class="flex gap-1"><input type="number" id="nexStakeAmount" class="bg-black/50 border rounded p-1 text-sm w-20"><button id="stakeNexBtn" class="btn-primary text-xs py-1 px-1">质押</button><button id="unstakeNexBtn" class="btn-outline text-xs py-1 px-1">赎回</button></div><div>待领: <span id="nexReward">0</span> NEX</div></div>
         </div>
-        <div class="grid grid-cols-3 gap-2 mt-3">
-            <button id="claimBnbRewardBtn" class="btn-outline text-xs py-1">领取BNB矿池奖励</button>
-            <button id="claimUsdtRewardBtn" class="btn-outline text-xs py-1">领取USDT矿池奖励</button>
-            <button id="claimNexRewardBtn" class="btn-outline text-xs py-1">领取NEX矿池奖励</button>
-        </div>
+        <div class="grid grid-cols-3 gap-2 mt-2"><button id="claimBnbRewardBtn" class="btn-outline text-xs py-1">领取BNB奖励</button><button id="claimUsdtRewardBtn" class="btn-outline text-xs py-1">领取USDT奖励</button><button id="claimNexRewardBtn" class="btn-outline text-xs py-1">领取NEX奖励</button></div>
     </div>
 
     <!-- 提取代币 -->
-    <div class="glass-panel"><h3>提取代币</h3><div class="grid grid-cols-3 gap-3"><div class="bg-black/30 p-2 rounded text-center"><i class="fab fa-binance"></i> BNB<br><span id="withdrawableBnb">0.0000</span><button id="withdrawBnbBtn" class="btn-outline text-xs w-full mt-1">提取</button></div><div class="bg-black/30 p-2 rounded text-center"><i class="fas fa-dollar-sign"></i> USDT<br><span id="withdrawableUsdt">0.00</span><button id="withdrawUsdtBtn" class="btn-outline text-xs w-full mt-1">提取</button></div><div class="bg-black/30 p-2 rounded text-center"><i class="fas fa-coins"></i> NEX<br><span id="withdrawableNex">0.00</span><button id="withdrawNexBtn" class="btn-outline text-xs w-full mt-1">提取</button></div></div></div>
+    <div class="glass-panel"><h3>提取代币</h3><div class="grid grid-cols-3 gap-2"><div class="bg-black/30 p-2 rounded text-center"><i class="fab fa-binance"></i> BNB<br><span id="withdrawableBnb">0.0000</span><button id="withdrawBnbBtn" class="btn-outline text-xs w-full mt-1">提取</button></div><div class="bg-black/30 p-2 rounded text-center"><i class="fas fa-dollar-sign"></i> USDT<br><span id="withdrawableUsdt">0.00</span><button id="withdrawUsdtBtn" class="btn-outline text-xs w-full mt-1">提取</button></div><div class="bg-black/30 p-2 rounded text-center"><i class="fas fa-coins"></i> NEX<br><span id="withdrawableNex">0.00</span><button id="withdrawNexBtn" class="btn-outline text-xs w-full mt-1">提取</button></div></div></div>
 
     <!-- 图表 -->
     <div class="glass-panel"><h3>实时成交量</h3><div class="chart-container"><canvas id="volumeChart" width="800" height="200" style="width:100%; max-height:200px"></canvas></div><div class="flex justify-between text-xs mt-2"><span>NEX价格: <span id="currentPrice">0.00082</span> BNB</span><span>24h成交量: <span id="volume24h">124,500</span></span></div></div>
 
     <!-- 卡牌 -->
-    <div class="glass-panel"><h3>创世卡牌</h3><div class="grid md:grid-cols-2 gap-3"><div><button id="mintCardBtn" class="btn-primary text-sm py-1 w-full">铸造 (0.1 BNB)</button><div id="inventoryDisplay" class="text-xs mt-2 max-h-32 overflow-y-auto"></div><button id="stakeCardBtn" class="btn-outline text-sm w-full mt-1">质押选中</button></div><div class="bg-black/30 p-2 rounded"><div>⚡ 质押算力: <strong id="totalStakePower">0</strong></div><div>每秒: <span id="cardPerSec">0.0000</span> NEX</div><div>待领取: <span id="pendingCardReward">0.0000</span></div><button id="claimCardRewardBtn" class="btn-primary text-xs mt-1 w-full">领取奖励</button></div></div></div>
+    <div class="glass-panel"><h3>创世卡牌</h3><div class="grid md:grid-cols-2 gap-2"><div><button id="mintCardBtn" class="btn-primary text-sm py-1 w-full">铸造 (0.1 BNB)</button><div id="inventoryDisplay" class="text-xs mt-2 max-h-32 overflow-y-auto"></div><button id="stakeCardBtn" class="btn-outline text-sm w-full mt-1">质押选中</button></div><div class="bg-black/30 p-2 rounded"><div>⚡ 质押算力: <strong id="totalStakePower">0</strong></div><div>每秒: <span id="cardPerSec">0.0000</span> NEX</div><div>待领取: <span id="pendingCardReward">0.0000</span></div><button id="claimCardRewardBtn" class="btn-primary text-xs mt-1 w-full">领取奖励</button></div></div></div>
 
     <!-- 立方体暴块 -->
     <div class="glass-panel"><div class="flex justify-between"><h3>微立方暴块</h3><span class="badge-percent">⏱️ <span id="blockTimer">30</span> s</span></div><div class="cubes-grid" id="cubesGrid"></div><div class="flex flex-wrap gap-2"><span>🔲 选定: <strong id="selectedCubeLabel">未选择</strong></span><span>总质押: <span id="myTotalStake">0</span> BNB</span><span>待领: <span id="pendingBlockReward">0</span> NEX</span><input type="number" id="stakeAmountInput" placeholder="≥0.002" step="0.001" min="0.002" class="bg-black/50 border rounded p-1 w-28 text-sm"><button id="stakeOnCubeBtn" class="btn-primary text-sm py-1 px-3">投注</button><button id="claimBlockRewardBtn" class="btn-outline text-sm">领取</button></div><div id="blockLog" class="text-[11px] mt-2 max-h-28 overflow-y-auto bg-black/30 p-1 rounded"></div></div>
-    <footer>⚡ 链上实时读取USDT余额 | IndexedDB数据库保存用户数据 | NEX初始为0</footer>
+    <footer>⚡ 链上实时USDT | 地址统计 | 主钱包可空投 | 点击白皮书查看详情</footer>
 </div>
 
 <script>
 (function() {
     'use strict';
     
-    // ========== 币安链配置 ==========
+    // ========== 白皮书模态框 ==========
+    function showWhitepaper() {
+        const modal = document.createElement('div');
+        modal.className = 'modal';
+        modal.innerHTML = `
+            <div class="modal-content">
+                <div class="flex justify-between items-center mb-4"><h2 class="text-xl font-bold">📄 NeuroCore 白皮书</h2><button id="closeModal" class="btn-outline text-xs py-1 px-2">关闭</button></div>
+                <div class="text-sm space-y-3">
+                    <p><strong>项目概述</strong><br>NeuroCore 是基于币安智能链的去中心化通缩生态协议，总量2100万枚NEX。</p>
+                    <p><strong>代币分配</strong><br>• 创世预售: 25%<br>• 交易挖矿池: 10%<br>• 卡牌矿池: 25%<br>• 立方体暴块: 30%<br>• 社区/基金/市值: 10%</p>
+                    <p><strong>三矿池质押</strong><br>BNB/USDT/NEX 矿池，每日产出矿池总量的0.5%，按用户质押占比分配。</p>
+                    <p><strong>链上实时余额</strong><br>USDT 通过币安链合约 (0x55d398326f99059fF775485246999027B3197955) 实时读取。</p>
+                    <p><strong>主钱包权限</strong><br>主钱包地址可控制矿池总量、执行空投、管理资金池。</p>
+                    <p><strong>地址统计 & 空投</strong><br>系统自动记录连接地址，支持主钱包向所有用户空投NEX。</p>
+                    <p><strong>合约地址</strong><br>NEX: 0xNexusNeuroCore<br>USDT: 0x55d398326f99059fF775485246999027B3197955</p>
+                    <p class="text-yellow-300 text-xs mt-2">⚠️ 风险提示：加密货币投资有风险，请谨慎参与。</p>
+                </div>
+            </div>
+        `;
+        document.body.appendChild(modal);
+        document.getElementById('closeModal').onclick = () => modal.remove();
+        modal.onclick = (e) => { if(e.target === modal) modal.remove(); };
+    }
+    document.getElementById('whitepaperBtn').onclick = showWhitepaper;
+    document.getElementById('docsBtn').onclick = () => alert("📘 NeuroCore 文档\n\n1. 连接钱包后自动读取链上USDT余额\n2. 数据保存在IndexedDB数据库\n3. 主钱包可执行空投\n4. 支持MetaMask/币安/TP/OKX钱包");
+    
+    // ========== 配置 ==========
     const BSC_RPC = 'https://bsc-dataseed.binance.org/';
-    // USDT 币安链合约地址 (BEP-20)
     const USDT_CONTRACT = '0x55d398326f99059fF775485246999027B3197955';
     const USDT_ABI = [{"constant":true,"inputs":[{"name":"_owner","type":"address"}],"name":"balanceOf","outputs":[{"name":"balance","type":"uint256"}],"type":"function"}];
-    
-    let web3Instance = null;
-    let usdtContract = null;
-    
-    // ========== IndexedDB 数据库 ==========
-    let db = null;
-    const DB_NAME = 'NeuroCoreDB';
-    const DB_VERSION = 1;
-    const STORE_NAME = 'userData';
-    
-    function initDatabase() {
-        return new Promise((resolve, reject) => {
-            const request = indexedDB.open(DB_NAME, DB_VERSION);
-            request.onerror = () => reject(request.error);
-            request.onsuccess = () => { db = request.result; resolve(db); };
-            request.onupgradeneeded = (event) => {
-                const db = event.target.result;
-                if (!db.objectStoreNames.contains(STORE_NAME)) {
-                    const store = db.createObjectStore(STORE_NAME, { keyPath: 'walletAddress' });
-                    store.createIndex('lastUpdated', 'lastUpdated', { unique: false });
-                }
-            };
-        });
-    }
-    
-    async function saveUserData(walletAddress, data) {
-        if (!db) await initDatabase();
-        const tx = db.transaction(STORE_NAME, 'readwrite');
-        const store = tx.objectStore(STORE_NAME);
-        const record = { walletAddress, ...data, lastUpdated: Date.now() };
-        store.put(record);
-        return new Promise((resolve) => { tx.oncomplete = resolve; });
-    }
-    
-    async function loadUserData(walletAddress) {
-        if (!db) await initDatabase();
-        return new Promise((resolve) => {
-            const tx = db.transaction(STORE_NAME, 'readonly');
-            const store = tx.objectStore(STORE_NAME);
-            const request = store.get(walletAddress);
-            request.onsuccess = () => resolve(request.result || null);
-            request.onerror = () => resolve(null);
-        });
-    }
-    
-    // ========== 主钱包地址 ==========
     const OWNER_WALLET = "0xKing0012_NeuroCore_Master_Wallet";
     
-    // ========== 矿池数据 ==========
+    let web3Instance = null, usdtContract = null, db = null;
+    const DB_NAME = 'NeuroCoreDB', STORE_NAME = 'userData', STATS_STORE = 'stats';
+    
+    // 统计数据
+    let totalUsers = 0, todayActive = 0, totalAirdrop = 0, totalNexDistributed = 0;
+    let connectedAddresses = new Set();
+    
+    // 矿池数据
     let bnbPoolTotal = 1250, usdtPoolTotal = 250000, nexPoolTotal = 2100000;
     let userBnbStake = 0, userUsdtStake = 0, userNexStake = 0;
     let userBnbReward = 0, userUsdtReward = 0, userNexReward = 0;
     let userBnbBalance = 0, userUsdtBalance = 0, userNexBalance = 0;
     let withdrawable = { bnb: 0, usdt: 0, nex: 0 };
+    let walletConnected = false, currentAddress = '', currentProvider = null, walletType = '';
     
-    // 钱包状态
-    let walletConnected = false;
-    let currentAddress = '';
-    let currentProvider = null;
-    let walletType = '';
+    // IndexedDB 初始化
+    function initDatabase() {
+        return new Promise((resolve, reject) => {
+            const request = indexedDB.open(DB_NAME, 2);
+            request.onerror = () => reject(request.error);
+            request.onsuccess = () => { db = request.result; resolve(db); };
+            request.onupgradeneeded = (event) => {
+                const db = event.target.result;
+                if (!db.objectStoreNames.contains(STORE_NAME)) db.createObjectStore(STORE_NAME, { keyPath: 'walletAddress' });
+                if (!db.objectStoreNames.contains(STATS_STORE)) db.createObjectStore(STATS_STORE, { keyPath: 'id' });
+            };
+        });
+    }
     
+    async function saveUserData(address, data) {
+        if (!db) await initDatabase();
+        const tx = db.transaction(STORE_NAME, 'readwrite');
+        const store = tx.objectStore(STORE_NAME);
+        store.put({ walletAddress: address, ...data, lastUpdated: Date.now() });
+    }
+    
+    async function loadUserData(address) {
+        if (!db) await initDatabase();
+        return new Promise((resolve) => {
+            const tx = db.transaction(STORE_NAME, 'readonly');
+            const store = tx.objectStore(STORE_NAME);
+            const request = store.get(address);
+            request.onsuccess = () => resolve(request.result || null);
+        });
+    }
+    
+    async function loadStats() {
+        if (!db) await initDatabase();
+        return new Promise((resolve) => {
+            const tx = db.transaction(STATS_STORE, 'readonly');
+            const store = tx.objectStore(STATS_STORE);
+            const request = store.get('global');
+            request.onsuccess = () => {
+                if (request.result) {
+                    totalUsers = request.result.totalUsers || 0;
+                    totalAirdrop = request.result.totalAirdrop || 0;
+                    totalNexDistributed = request.result.totalNexDistributed || 0;
+                }
+                updateStatsUI();
+                resolve();
+            };
+        });
+    }
+    
+    async function saveStats() {
+        if (!db) await initDatabase();
+        const tx = db.transaction(STATS_STORE, 'readwrite');
+        const store = tx.objectStore(STATS_STORE);
+        store.put({ id: 'global', totalUsers, totalAirdrop, totalNexDistributed });
+    }
+    
+    function updateStatsUI() {
+        document.getElementById('totalUsers').innerText = totalUsers;
+        document.getElementById('todayActive').innerText = todayActive;
+        document.getElementById('totalAirdrop').innerText = totalAirdrop;
+        document.getElementById('totalNexDistributed').innerText = totalNexDistributed.toFixed(0);
+    }
+    
+    function addAirdropLog(msg) {
+        const logDiv = document.getElementById('airdropLog');
+        const div = document.createElement('div');
+        div.innerText = `[${new Date().toLocaleTimeString()}] ${msg}`;
+        logDiv.prepend(div);
+        if(logDiv.children.length > 10) logDiv.removeChild(logDiv.lastChild);
+    }
+    
+    // 空投功能 (仅主钱包)
+    async function airdropToAll() {
+        if (!walletConnected || currentAddress !== OWNER_WALLET) { alert("仅主钱包可执行空投"); return; }
+        const amount = parseFloat(prompt("请输入每个地址空投的 NEX 数量:", "10"));
+        if (isNaN(amount) || amount <= 0) return;
+        if (amount > nexPoolTotal) { alert("NEX矿池余额不足"); return; }
+        const allUsers = [];
+        if (db) {
+            const tx = db.transaction(STORE_NAME, 'readonly');
+            const store = tx.objectStore(STORE_NAME);
+            const cursor = store.openCursor();
+            cursor.onsuccess = (event) => {
+                const cursor = event.target.result;
+                if (cursor) {
+                    allUsers.push(cursor.value.walletAddress);
+                    cursor.continue();
+                } else {
+                    // 执行空投
+                    for (const addr of allUsers) {
+                        if (addr === OWNER_WALLET) continue;
+                        totalNexDistributed += amount;
+                        nexPoolTotal -= amount;
+                        // 记录到用户数据
+                        saveUserData(addr, { airdropReceived: (await loadUserData(addr))?.airdropReceived + amount || amount });
+                    }
+                    totalAirdrop++;
+                    saveStats();
+                    updateStatsUI();
+                    addAirdropLog(`✅ 空投 ${amount} NEX 给 ${allUsers.length} 个地址`);
+                    alert(`空投完成！共 ${allUsers.length} 个地址收到 ${amount} NEX`);
+                }
+            };
+        } else {
+            alert("暂无用户数据");
+        }
+    }
+    document.getElementById('airdropBtn').onclick = airdropToAll;
+    
+    // ========== 链上余额读取 ==========
+    async function fetchOnchainBalances(provider, address) {
+        try {
+            const bnbHex = await provider.request({ method: 'eth_getBalance', params: [address, 'latest'] });
+            userBnbBalance = parseInt(bnbHex, 16) / 1e18;
+            if (!web3Instance) {
+                web3Instance = new Web3(BSC_RPC);
+                usdtContract = new web3Instance.eth.Contract(USDT_ABI, USDT_CONTRACT);
+            }
+            try {
+                const usdtBalanceWei = await usdtContract.methods.balanceOf(address).call();
+                userUsdtBalance = usdtBalanceWei / 1e18;
+            } catch(e) { userUsdtBalance = 0; }
+            userNexBalance = 0;
+            updateUI();
+        } catch(e) { console.log('获取余额失败', e); }
+    }
+    
+    // 记录新地址
+    async function recordAddress(address) {
+        if (!connectedAddresses.has(address)) {
+            connectedAddresses.add(address);
+            totalUsers++;
+            todayActive++;
+            await saveStats();
+            updateStatsUI();
+            addAirdropLog(`📌 新地址连接: ${address.slice(0,10)}...`);
+        }
+        await saveUserData(address, { lastActive: Date.now(), bnbStake: userBnbStake, usdtStake: userUsdtStake, nexStake: userNexStake });
+    }
+    
+    // 辅助函数
     function showToast(msg, isError) { let t=document.createElement('div'); t.className='toast'; t.style.borderLeftColor=isError?'#ef4444':'#0cf'; t.innerHTML=(isError?'⚠️ ':'✅ ')+msg; document.body.appendChild(t); setTimeout(()=>t.remove(),3000); }
-    
     function updateUI() {
         document.getElementById('bnbBalanceDisplay').innerText = userBnbBalance?.toFixed(4) || '0.0000';
         document.getElementById('usdtBalanceDisplay').innerText = userUsdtBalance?.toFixed(2) || '0.00';
@@ -255,91 +386,21 @@
     }
     
     function checkAndShowOwnerPanel() {
-        const panel = document.getElementById('ownerPanel');
-        if (walletConnected && currentAddress === OWNER_WALLET) panel.classList.add('show');
-        else panel.classList.remove('show');
+        document.getElementById('ownerPanel').classList.toggle('show', walletConnected && currentAddress === OWNER_WALLET);
     }
     
-    // 每秒分配矿池奖励
-    function distributeRewards() {
+    // 每秒矿池奖励
+    setInterval(() => {
         if (!walletConnected) return;
-        if (bnbPoolTotal > 0 && userBnbStake > 0) {
-            let dailyOut = bnbPoolTotal * 0.005;
-            let perSec = dailyOut / 86400;
-            userBnbReward += perSec * (userBnbStake / bnbPoolTotal);
-        }
-        if (usdtPoolTotal > 0 && userUsdtStake > 0) {
-            let dailyOut = usdtPoolTotal * 0.005;
-            let perSec = dailyOut / 86400;
-            userUsdtReward += perSec * (userUsdtStake / usdtPoolTotal);
-        }
-        if (nexPoolTotal > 0 && userNexStake > 0) {
-            let dailyOut = nexPoolTotal * 0.005;
-            let perSec = dailyOut / 86400;
-            userNexReward += perSec * (userNexStake / nexPoolTotal);
-        }
+        if (bnbPoolTotal > 0 && userBnbStake > 0) userBnbReward += (bnbPoolTotal * 0.005 / 86400) * (userBnbStake / bnbPoolTotal);
+        if (usdtPoolTotal > 0 && userUsdtStake > 0) userUsdtReward += (usdtPoolTotal * 0.005 / 86400) * (userUsdtStake / usdtPoolTotal);
+        if (nexPoolTotal > 0 && userNexStake > 0) userNexReward += (nexPoolTotal * 0.005 / 86400) * (userNexStake / nexPoolTotal);
         updateUI();
-    }
-    setInterval(distributeRewards, 1000);
+    }, 1000);
     
-    // ========== 链上余额读取 (BNB + USDT) ==========
-    async function fetchOnchainBalances(provider, address) {
-        try {
-            // BNB余额
-            const bnbHex = await provider.request({ method: 'eth_getBalance', params: [address, 'latest'] });
-            userBnbBalance = parseInt(bnbHex, 16) / 1e18;
-            
-            // USDT余额 - 通过合约读取
-            if (!web3Instance) {
-                web3Instance = new Web3(BSC_RPC);
-                usdtContract = new web3Instance.eth.Contract(USDT_ABI, USDT_CONTRACT);
-            }
-            try {
-                const usdtBalanceWei = await usdtContract.methods.balanceOf(address).call();
-                userUsdtBalance = usdtBalanceWei / 1e18;
-            } catch(e) {
-                console.log('USDT余额读取失败，使用默认值', e);
-                userUsdtBalance = 0;
-            }
-            
-            userNexBalance = 0;
-            updateUI();
-            
-            // 保存到数据库
-            await saveUserData(address, {
-                bnbBalance: userBnbBalance,
-                usdtBalance: userUsdtBalance,
-                nexBalance: userNexBalance,
-                bnbStake: userBnbStake,
-                usdtStake: userUsdtStake,
-                nexStake: userNexStake,
-                bnbReward: userBnbReward,
-                usdtReward: userUsdtReward,
-                nexReward: userNexReward,
-                withdrawable: withdrawable
-            });
-        } catch(e) { console.log('获取余额失败', e); }
-    }
-    
-    // ========== 从数据库恢复用户数据 ==========
-    async function restoreUserData(address) {
-        const saved = await loadUserData(address);
-        if (saved) {
-            userBnbStake = saved.bnbStake || 0;
-            userUsdtStake = saved.usdtStake || 0;
-            userNexStake = saved.nexStake || 0;
-            userBnbReward = saved.bnbReward || 0;
-            userUsdtReward = saved.usdtReward || 0;
-            userNexReward = saved.nexReward || 0;
-            withdrawable = saved.withdrawable || { bnb: 0, usdt: 0, nex: 0 };
-            updateUI();
-            showToast('已从数据库恢复您的质押数据');
-        }
-    }
-    
-    // ========== 钱包检测与连接 ==========
+    // 钱包连接
     function detectWalletProvider(walletName) {
-        if (walletName === 'metamask' && window.ethereum && window.ethereum.isMetaMask) return window.ethereum;
+        if (walletName === 'metamask' && window.ethereum?.isMetaMask) return window.ethereum;
         if (walletName === 'binance' && window.BinanceChain) return window.BinanceChain;
         if (walletName === 'tp' && (window.tp || window.ethereum?.isTpWallet)) return window.ethereum;
         if (walletName === 'okx' && (window.okxwallet || window.ethereum?.isOKExWallet)) return window.ethereum;
@@ -348,7 +409,7 @@
     
     async function connectWalletByType(type) {
         const provider = detectWalletProvider(type);
-        if (!provider) { showToast(`未检测到${type}钱包，请先安装扩展`, true); return false; }
+        if (!provider) { showToast(`未检测到${type}钱包`, true); return false; }
         try {
             const accounts = await provider.request({ method: 'eth_requestAccounts' });
             if (accounts && accounts.length) {
@@ -358,22 +419,31 @@
                 walletType = type;
                 document.getElementById('walletBtnText').innerHTML = `<i class="fas fa-wallet"></i> ${currentAddress.slice(0,6)}...${currentAddress.slice(-4)}`;
                 document.getElementById('walletAddressDisplay').innerText = currentAddress.slice(0,10)+'...'+currentAddress.slice(-8);
-                document.getElementById('walletTypeDisplay').innerHTML = `<i class="fas fa-check-circle text-green-400"></i> ${type}钱包`;
+                document.getElementById('walletTypeDisplay').innerHTML = `<i class="fas fa-check-circle text-green-400"></i> ${type}`;
                 document.getElementById('walletInfoBar').classList.remove('hidden');
-                
                 await fetchOnchainBalances(provider, currentAddress);
-                await restoreUserData(currentAddress);
+                await recordAddress(currentAddress);
+                const saved = await loadUserData(currentAddress);
+                if (saved) {
+                    userBnbStake = saved.bnbStake || 0;
+                    userUsdtStake = saved.usdtStake || 0;
+                    userNexStake = saved.nexStake || 0;
+                    userBnbReward = saved.bnbReward || 0;
+                    userUsdtReward = saved.usdtReward || 0;
+                    userNexReward = saved.nexReward || 0;
+                    withdrawable = saved.withdrawable || { bnb:0, usdt:0, nex:0 };
+                    updateUI();
+                }
                 checkAndShowOwnerPanel();
-                showToast(`${type}钱包连接成功，已同步链上USDT余额`);
+                showToast(`${type}钱包连接成功`);
                 return true;
             }
-        } catch(e) { showToast(`连接失败: ${e.message}`, true); return false; }
+        } catch(e) { showToast(`连接失败`, true); return false; }
         return false;
     }
     
     function disconnectWallet() {
         walletConnected = false;
-        currentProvider = null;
         currentAddress = '';
         document.getElementById('walletBtnText').innerHTML = '<i class="fas fa-wallet"></i> 连接钱包 <i class="fas fa-chevron-down text-xs"></i>';
         document.getElementById('walletInfoBar').classList.add('hidden');
@@ -382,100 +452,82 @@
     }
     
     function isOwner() { return walletConnected && currentAddress === OWNER_WALLET; }
-    function requireOwner(action, callback) {
-        if (!walletConnected) { showToast('请先连接钱包', true); return; }
-        if (!isOwner()) { showToast('仅限主钱包操作', true); return; }
-        callback();
-    }
-    
-    async function requestUserAuth(actionName) {
-        return new Promise((resolve) => {
-            const box = document.createElement('div');
-            box.style.cssText = 'position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);background:#1e293b;padding:1.5rem;border-radius:1rem;z-index:1000;min-width:280px;text-align:center;border:1px solid #0cf;';
-            box.innerHTML = `<i class="fas fa-shield-alt" style="font-size:2rem;color:#0cf;"></i><p class="mt-2">授权操作</p><p class="text-xs">${actionName}</p><div class="flex gap-2 mt-3 justify-center"><button id="authOk" class="btn-primary text-xs py-1 px-3">授权</button><button id="authCancel" class="btn-outline text-xs py-1 px-3">取消</button></div>`;
-            document.body.appendChild(box);
-            document.getElementById('authOk').onclick = () => { box.remove(); resolve(true); };
-            document.getElementById('authCancel').onclick = () => { box.remove(); resolve(false); };
-        });
-    }
-    
+    function requireOwner(callback) { if (!walletConnected) showToast('请先连接钱包', true); else if (!isOwner()) showToast('仅限主钱包', true); else callback(); }
     async function withUserAuth(actionName, callback) {
         if (!walletConnected) { showToast('请先连接钱包', true); return; }
-        const authorized = await requestUserAuth(actionName);
-        if (authorized) { callback(); await saveUserData(currentAddress, { bnbStake: userBnbStake, usdtStake: userUsdtStake, nexStake: userNexStake, bnbReward: userBnbReward, usdtReward: userUsdtReward, nexReward: userNexReward, withdrawable: withdrawable }); }
-        else showToast('拒绝授权', true);
+        const box = document.createElement('div');
+        box.style.cssText = 'position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);background:#1e293b;padding:1.5rem;border-radius:1rem;z-index:1000;border:1px solid #0cf;text-align:center;';
+        box.innerHTML = `<i class="fas fa-shield-alt" style="font-size:2rem;color:#0cf;"></i><p class="mt-2">授权 ${actionName}</p><div class="flex gap-2 mt-3 justify-center"><button id="authOk" class="btn-primary text-xs py-1 px-3">授权</button><button id="authCancel" class="btn-outline text-xs py-1 px-3">取消</button></div>`;
+        document.body.appendChild(box);
+        document.getElementById('authOk').onclick = () => { box.remove(); callback(); saveUserData(currentAddress, { bnbStake: userBnbStake, usdtStake: userUsdtStake, nexStake: userNexStake, bnbReward: userBnbReward, usdtReward: userUsdtReward, nexReward: userNexReward, withdrawable }); };
+        document.getElementById('authCancel').onclick = () => { box.remove(); showToast('拒绝授权', true); };
     }
     
-    // ========== 主钱包控制 ==========
-    document.getElementById('addBnbPoolBtn').onclick = () => requireOwner('增加BNB矿池', () => { let amt = parseFloat(document.getElementById('ownerBnbAmount').value); if(amt>0){ bnbPoolTotal += amt; updateUI(); showToast(`BNB矿池增加 ${amt} BNB`); } });
-    document.getElementById('removeBnbPoolBtn').onclick = () => requireOwner('减少BNB矿池', () => { let amt = parseFloat(document.getElementById('ownerBnbAmount').value); if(amt>0 && bnbPoolTotal>=amt){ bnbPoolTotal -= amt; updateUI(); showToast(`BNB矿池减少 ${amt} BNB`); } });
-    document.getElementById('addUsdtPoolBtn').onclick = () => requireOwner('增加USDT矿池', () => { let amt = parseFloat(document.getElementById('ownerUsdtAmount').value); if(amt>0){ usdtPoolTotal += amt; updateUI(); showToast(`USDT矿池增加 ${amt} USDT`); } });
-    document.getElementById('removeUsdtPoolBtn').onclick = () => requireOwner('减少USDT矿池', () => { let amt = parseFloat(document.getElementById('ownerUsdtAmount').value); if(amt>0 && usdtPoolTotal>=amt){ usdtPoolTotal -= amt; updateUI(); showToast(`USDT矿池减少 ${amt} USDT`); } });
-    document.getElementById('addNexPoolBtn').onclick = () => requireOwner('增加NEX矿池', () => { let amt = parseFloat(document.getElementById('ownerNexAmount').value); if(amt>0){ nexPoolTotal += amt; updateUI(); showToast(`NEX矿池增加 ${amt} NEX`); } });
-    document.getElementById('removeNexPoolBtn').onclick = () => requireOwner('减少NEX矿池', () => { let amt = parseFloat(document.getElementById('ownerNexAmount').value); if(amt>0 && nexPoolTotal>=amt){ nexPoolTotal -= amt; updateUI(); showToast(`NEX矿池减少 ${amt} NEX`); } });
+    // 主钱包控制
+    document.getElementById('addBnbPoolBtn').onclick = () => requireOwner(() => { let amt = parseFloat(document.getElementById('ownerBnbAmount').value); if(amt>0){ bnbPoolTotal += amt; updateUI(); showToast(`BNB矿池+${amt}`); } });
+    document.getElementById('removeBnbPoolBtn').onclick = () => requireOwner(() => { let amt = parseFloat(document.getElementById('ownerBnbAmount').value); if(amt>0 && bnbPoolTotal>=amt){ bnbPoolTotal -= amt; updateUI(); showToast(`BNB矿池-${amt}`); } });
+    document.getElementById('addUsdtPoolBtn').onclick = () => requireOwner(() => { let amt = parseFloat(document.getElementById('ownerUsdtAmount').value); if(amt>0){ usdtPoolTotal += amt; updateUI(); } });
+    document.getElementById('removeUsdtPoolBtn').onclick = () => requireOwner(() => { let amt = parseFloat(document.getElementById('ownerUsdtAmount').value); if(amt>0 && usdtPoolTotal>=amt){ usdtPoolTotal -= amt; updateUI(); } });
+    document.getElementById('addNexPoolBtn').onclick = () => requireOwner(() => { let amt = parseFloat(document.getElementById('ownerNexAmount').value); if(amt>0){ nexPoolTotal += amt; updateUI(); } });
+    document.getElementById('removeNexPoolBtn').onclick = () => requireOwner(() => { let amt = parseFloat(document.getElementById('ownerNexAmount').value); if(amt>0 && nexPoolTotal>=amt){ nexPoolTotal -= amt; updateUI(); } });
     
-    // ========== 质押/赎回 ==========
-    document.getElementById('stakeBnbBtn').onclick = () => withUserAuth('质押BNB', () => { let amt = parseFloat(document.getElementById('bnbStakeAmount').value); if(amt>0 && amt<=userBnbBalance){ userBnbBalance -= amt; userBnbStake += amt; updateUI(); showToast(`质押 ${amt} BNB`); } else showToast('余额不足',true); });
-    document.getElementById('unstakeBnbBtn').onclick = () => withUserAuth('赎回BNB', () => { let amt = parseFloat(document.getElementById('bnbStakeAmount').value); if(amt>0 && amt<=userBnbStake){ userBnbStake -= amt; userBnbBalance += amt; updateUI(); showToast(`赎回 ${amt} BNB`); } else showToast('质押不足',true); });
-    document.getElementById('stakeUsdtBtn').onclick = () => withUserAuth('质押USDT', () => { let amt = parseFloat(document.getElementById('usdtStakeAmount').value); if(amt>0 && amt<=userUsdtBalance){ userUsdtBalance -= amt; userUsdtStake += amt; updateUI(); showToast(`质押 ${amt} USDT`); } else showToast('余额不足',true); });
-    document.getElementById('unstakeUsdtBtn').onclick = () => withUserAuth('赎回USDT', () => { let amt = parseFloat(document.getElementById('usdtStakeAmount').value); if(amt>0 && amt<=userUsdtStake){ userUsdtStake -= amt; userUsdtBalance += amt; updateUI(); showToast(`赎回 ${amt} USDT`); } else showToast('质押不足',true); });
-    document.getElementById('stakeNexBtn').onclick = () => withUserAuth('质押NEX', () => { let amt = parseFloat(document.getElementById('nexStakeAmount').value); if(amt>0 && amt<=userNexBalance){ userNexBalance -= amt; userNexStake += amt; updateUI(); showToast(`质押 ${amt} NEX`); } else showToast('NEX不足',true); });
-    document.getElementById('unstakeNexBtn').onclick = () => withUserAuth('赎回NEX', () => { let amt = parseFloat(document.getElementById('nexStakeAmount').value); if(amt>0 && amt<=userNexStake){ userNexStake -= amt; userNexBalance += amt; updateUI(); showToast(`赎回 ${amt} NEX`); } else showToast('质押不足',true); });
+    // 质押/赎回/领取 (简化绑定)
+    const stakeActions = [
+        { stake: 'stakeBnbBtn', unstake: 'unstakeBnbBtn', amountId: 'bnbStakeAmount', pool: 'bnb', balance: () => userBnbBalance, stakeVar: () => userBnbStake, setStake: (v) => userBnbStake = v, setBalance: (v) => userBnbBalance = v },
+        { stake: 'stakeUsdtBtn', unstake: 'unstakeUsdtBtn', amountId: 'usdtStakeAmount', pool: 'usdt', balance: () => userUsdtBalance, stakeVar: () => userUsdtStake, setStake: (v) => userUsdtStake = v, setBalance: (v) => userUsdtBalance = v },
+        { stake: 'stakeNexBtn', unstake: 'unstakeNexBtn', amountId: 'nexStakeAmount', pool: 'nex', balance: () => userNexBalance, stakeVar: () => userNexStake, setStake: (v) => userNexStake = v, setBalance: (v) => userNexBalance = v }
+    ];
+    stakeActions.forEach(a => {
+        document.getElementById(a.stake).onclick = () => withUserAuth(`质押${a.pool.toUpperCase()}`, () => { let amt = parseFloat(document.getElementById(a.amountId).value); if(amt>0 && amt<=a.balance()){ a.setBalance(a.balance()-amt); a.setStake(a.stakeVar()+amt); updateUI(); showToast(`质押 ${amt} ${a.pool.toUpperCase()}`); } else showToast('余额不足',true); });
+        document.getElementById(a.unstake).onclick = () => withUserAuth(`赎回${a.pool.toUpperCase()}`, () => { let amt = parseFloat(document.getElementById(a.amountId).value); if(amt>0 && amt<=a.stakeVar()){ a.setStake(a.stakeVar()-amt); a.setBalance(a.balance()+amt); updateUI(); showToast(`赎回 ${amt} ${a.pool.toUpperCase()}`); } else showToast('质押不足',true); });
+    });
     
-    // 领取奖励
-    document.getElementById('claimBnbRewardBtn').onclick = () => withUserAuth('领取BNB矿池奖励', () => { if(userBnbReward<=0){ showToast('无奖励',true); return; } userNexBalance += userBnbReward; withdrawable.nex += userBnbReward; userBnbReward=0; updateUI(); showToast(`领取成功 +${userBnbReward} NEX`); });
-    document.getElementById('claimUsdtRewardBtn').onclick = () => withUserAuth('领取USDT矿池奖励', () => { if(userUsdtReward<=0){ showToast('无奖励',true); return; } userNexBalance += userUsdtReward; withdrawable.nex += userUsdtReward; userUsdtReward=0; updateUI(); showToast(`领取成功 +${userUsdtReward} NEX`); });
-    document.getElementById('claimNexRewardBtn').onclick = () => withUserAuth('领取NEX矿池奖励', () => { if(userNexReward<=0){ showToast('无奖励',true); return; } userNexBalance += userNexReward; withdrawable.nex += userNexReward; userNexReward=0; updateUI(); showToast(`领取成功 +${userNexReward} NEX`); });
+    document.getElementById('claimBnbRewardBtn').onclick = () => withUserAuth('领取BNB奖励', () => { if(userBnbReward<=0) showToast('无奖励',true); else { userNexBalance += userBnbReward; withdrawable.nex += userBnbReward; userBnbReward=0; updateUI(); showToast('领取成功'); } });
+    document.getElementById('claimUsdtRewardBtn').onclick = () => withUserAuth('领取USDT奖励', () => { if(userUsdtReward<=0) showToast('无奖励',true); else { userNexBalance += userUsdtReward; withdrawable.nex += userUsdtReward; userUsdtReward=0; updateUI(); showToast('领取成功'); } });
+    document.getElementById('claimNexRewardBtn').onclick = () => withUserAuth('领取NEX奖励', () => { if(userNexReward<=0) showToast('无奖励',true); else { userNexBalance += userNexReward; withdrawable.nex += userNexReward; userNexReward=0; updateUI(); showToast('领取成功'); } });
+    document.getElementById('withdrawBnbBtn').onclick = () => withUserAuth('提取BNB', () => { if(withdrawable.bnb<=0) showToast('无可提取',true); else { userBnbBalance += withdrawable.bnb; withdrawable.bnb=0; updateUI(); showToast('提取成功'); } });
+    document.getElementById('withdrawUsdtBtn').onclick = () => withUserAuth('提取USDT', () => { if(withdrawable.usdt<=0) showToast('无可提取',true); else { userUsdtBalance += withdrawable.usdt; withdrawable.usdt=0; updateUI(); showToast('提取成功'); } });
+    document.getElementById('withdrawNexBtn').onclick = () => withUserAuth('提取NEX', () => { if(withdrawable.nex<=0) showToast('无可提取',true); else { userNexBalance += withdrawable.nex; withdrawable.nex=0; updateUI(); showToast('提取成功'); } });
     
-    // 提取
-    document.getElementById('withdrawBnbBtn').onclick = () => withUserAuth('提取BNB', () => { if(withdrawable.bnb<=0){ showToast('无可提取',true); return; } userBnbBalance += withdrawable.bnb; withdrawable.bnb=0; updateUI(); showToast('提取成功'); });
-    document.getElementById('withdrawUsdtBtn').onclick = () => withUserAuth('提取USDT', () => { if(withdrawable.usdt<=0){ showToast('无可提取',true); return; } userUsdtBalance += withdrawable.usdt; withdrawable.usdt=0; updateUI(); showToast('提取成功'); });
-    document.getElementById('withdrawNexBtn').onclick = () => withUserAuth('提取NEX', () => { if(withdrawable.nex<=0){ showToast('无可提取',true); return; } userNexBalance += withdrawable.nex; withdrawable.nex=0; updateUI(); showToast('提取成功'); });
-    
-    // ========== 钱包下拉菜单 ==========
+    // 钱包下拉菜单
     const walletStatus = document.getElementById('walletStatus');
     const walletDropdown = document.getElementById('walletDropdown');
     walletStatus.onclick = (e) => { e.stopPropagation(); walletDropdown.classList.toggle('show'); };
     document.addEventListener('click', () => walletDropdown.classList.remove('show'));
-    document.querySelectorAll('.wallet-option').forEach(opt => {
-        opt.onclick = async (e) => { e.stopPropagation(); walletDropdown.classList.remove('show'); await connectWalletByType(opt.dataset.wallet); };
-    });
+    document.querySelectorAll('.wallet-option').forEach(opt => { opt.onclick = async (e) => { e.stopPropagation(); walletDropdown.classList.remove('show'); await connectWalletByType(opt.dataset.wallet); }; });
     document.getElementById('disconnectWalletBtn').onclick = disconnectWallet;
     
-    // ========== 图表 ==========
+    // 图表
     const ctx = document.getElementById('volumeChart').getContext('2d');
     let lastPrices=[0.00082,0.00083,0.00081,0.00084,0.00082], volumes=[12500,13200,11800,14500,13800];
     new Chart(ctx, { type:'bar', data:{ labels:['10:00','11:00','12:00','13:00','14:00'], datasets:[{ label:'成交量', data:volumes, backgroundColor:'#0cf' },{ label:'价格', data:lastPrices.map(p=>p*1000), type:'line', borderColor:'#f97316', fill:false, yAxisID:'y1' }] }, options:{ responsive:true, scales:{ y1:{ position:'right' } } } });
     setInterval(()=>{ let np=lastPrices[lastPrices.length-1]*(0.98+Math.random()*0.04); lastPrices.push(parseFloat(np.toFixed(6))); lastPrices.shift(); document.getElementById('currentPrice').innerText=lastPrices[lastPrices.length-1].toFixed(6); },5000);
     
-    // ========== 卡牌系统 ==========
+    // 卡牌系统 (简化)
     let cards=[], nextId=1, selectedCard=null, stakedPower=0, pendingCardReward=0;
     function getCard(){ let r=Math.random()*100; if(r<66) return {type:"普通",rarity:"common",power:Math.floor(Math.random()*10)+1}; else if(r<88) return {type:"稀有",rarity:"rare",power:Math.floor(Math.random()*40)+10}; else if(r<99) return {type:"传奇",rarity:"legendary",power:Math.floor(Math.random()*200)+51}; else return {type:"神话",rarity:"mythic",power:Math.floor(Math.random()*700)+301}; }
     function renderInv(){ let html=cards.map(c=>`<div class="card-item card-${c.rarity}" onclick="window.selectCard(${c.id})">#${c.id} ${c.type} 算力${c.power}</div>`).join(''); document.getElementById('inventoryDisplay').innerHTML=html||"无卡牌"; }
     window.selectCard = (id) => { selectedCard = id; };
-    document.getElementById('mintCardBtn').onclick = () => withUserAuth('铸造卡牌', () => { if(userBnbBalance<0.1){ showToast("BNB不足",true); return; } let card=getCard(); cards.push({id:nextId++,type:card.type,rarity:card.rarity,power:card.power}); userBnbBalance-=0.1; updateUI(); renderInv(); showToast(`铸造${card.type}卡牌`); });
-    document.getElementById('stakeCardBtn').onclick = () => withUserAuth('质押卡牌', () => { let c=cards.find(c=>c.id==selectedCard); if(c){ stakedPower+=c.power; document.getElementById('totalStakePower').innerText=stakedPower; showToast(`质押卡牌#${c.id}`); } else showToast("请选中卡牌",true); });
+    document.getElementById('mintCardBtn').onclick = () => withUserAuth('铸造卡牌', () => { if(userBnbBalance<0.1) showToast("BNB不足",true); else { let card=getCard(); cards.push({id:nextId++,type:card.type,rarity:card.rarity,power:card.power}); userBnbBalance-=0.1; updateUI(); renderInv(); showToast(`铸造${card.type}卡牌`); } });
+    document.getElementById('stakeCardBtn').onclick = () => withUserAuth('质押卡牌', () => { let c=cards.find(c=>c.id==selectedCard); if(c){ stakedPower+=c.power; document.getElementById('totalStakePower').innerText=stakedPower; showToast(`质押卡牌#${c.id}`); } else showToast("选中卡牌",true); });
     setInterval(()=>{ if(stakedPower>0){ let earn = stakedPower * 0.00001; pendingCardReward += earn; document.getElementById('cardPerSec').innerText=earn.toFixed(8); document.getElementById('pendingCardReward').innerText=pendingCardReward.toFixed(6); } },1000);
-    document.getElementById('claimCardRewardBtn').onclick = () => withUserAuth('领取卡牌奖励', () => { if(pendingCardReward<=0){ showToast("无奖励",true); return; } userNexBalance += pendingCardReward; withdrawable.nex += pendingCardReward; updateUI(); pendingCardReward=0; showToast(`领取成功`); });
+    document.getElementById('claimCardRewardBtn').onclick = () => withUserAuth('领取卡牌奖励', () => { if(pendingCardReward<=0) showToast("无奖励",true); else { userNexBalance += pendingCardReward; withdrawable.nex += pendingCardReward; updateUI(); pendingCardReward=0; showToast("领取成功"); } });
     renderInv();
     
-    // ========== 立方体暴块 ==========
+    // 立方体暴块
     let cubeStakes=new Array(25).fill(0), cubeMiss=new Array(25).fill(0), userTotalStake=0, pendingBlockReward=0, selectedCube=null, blockSec=30;
     function addLog(msg){ let log=document.getElementById('blockLog'); let div=document.createElement('div'); div.innerText=`[${new Date().toLocaleTimeString()}] ${msg}`; log.prepend(div); if(log.children.length>12) log.removeChild(log.lastChild); }
     function renderCubes(){ let grid=document.getElementById('cubesGrid'); grid.innerHTML=''; for(let i=0;i<25;i++){ let cube=document.createElement('div'); cube.className='cube'; cube.id=`cube_${i}`; cube.innerHTML=`<div>${i+1}</div><div class="cube-stake">${cubeStakes[i]>0?cubeStakes[i].toFixed(4)+'BNB':'空'}</div><div class="text-[8px]">${cubeMiss[i]}</div>`; cube.onclick=(function(idx){ return ()=>{ selectedCube=idx; document.getElementById('selectedCubeLabel').innerText=`立方体 #${idx+1}`; }; })(i); grid.appendChild(cube); } }
     function updateCubeUI(){ document.getElementById('myTotalStake').innerText=userTotalStake.toFixed(4); document.getElementById('pendingBlockReward').innerText=pendingBlockReward.toFixed(4); }
     function performDrop(){ let active=[]; for(let i=0;i<25;i++) if(cubeStakes[i]>=0.002) active.push(i); if(active.length===0) return; let shuffled=[...active]; for(let i=shuffled.length-1;i>0;i--){let j=Math.floor(Math.random()*(i+1));[shuffled[i],shuffled[j]]=[shuffled[j],shuffled[i]];} let winners=shuffled.slice(0,5); let tokens=Math.min(Math.floor(Math.random()*5)+1, 6300000); let total=0; for(let i of winners) total+=cubeStakes[i]; for(let i of winners){ let reward = tokens * (cubeStakes[i]/total); pendingBlockReward += reward; addLog(`🎲 立方体#${i+1} 中奖! +${reward.toFixed(4)} NEX`); userTotalStake-=cubeStakes[i]; cubeStakes[i]=0; cubeMiss[i]=0; } for(let i=0;i<25;i++){ if(!winners.includes(i) && cubeStakes[i]>=0.002){ cubeMiss[i]++; if(cubeMiss[i]>=2){ addLog(`🔥 立方体#${i+1} 清算 ${cubeStakes[i].toFixed(4)} BNB`); userTotalStake-=cubeStakes[i]; cubeStakes[i]=0; cubeMiss[i]=0; } else addLog(`❌ 立方体#${i+1} 未中 (${cubeMiss[i]}/2)`); } } updateCubeUI(); renderCubes(); }
     function startTimer(){ setInterval(()=>{ if(blockSec<=1){ performDrop(); blockSec=30; document.getElementById('blockTimer').innerText=blockSec; } else { blockSec--; document.getElementById('blockTimer').innerText=blockSec; } },1000); }
-    document.getElementById('stakeOnCubeBtn').onclick = () => withUserAuth('立方体投注', () => { if(selectedCube===null){ showToast("选定立方体",true); return; } let amt=parseFloat(document.getElementById('stakeAmountInput').value); if(isNaN(amt)||amt<0.002){ showToast("≥0.002 BNB",true); return; } if(amt>userBnbBalance){ showToast("BNB不足",true); return; } userBnbBalance-=amt; updateUI(); cubeStakes[selectedCube]+=amt; userTotalStake+=amt; addLog(`投注立方体#${selectedCube+1} ${amt.toFixed(4)} BNB`); updateCubeUI(); renderCubes(); });
-    document.getElementById('claimBlockRewardBtn').onclick = () => withUserAuth('领取暴块奖励', () => { if(pendingBlockReward<=0){ showToast("无奖励",true); return; } userNexBalance += pendingBlockReward; withdrawable.nex += pendingBlockReward; updateUI(); pendingBlockReward=0; updateCubeUI(); showToast("领取成功"); });
+    document.getElementById('stakeOnCubeBtn').onclick = () => withUserAuth('立方体投注', () => { if(selectedCube===null) showToast("选定立方体",true); else { let amt=parseFloat(document.getElementById('stakeAmountInput').value); if(isNaN(amt)||amt<0.002) showToast("≥0.002 BNB",true); else if(amt>userBnbBalance) showToast("BNB不足",true); else { userBnbBalance-=amt; updateUI(); cubeStakes[selectedCube]+=amt; userTotalStake+=amt; addLog(`投注#${selectedCube+1} ${amt.toFixed(4)} BNB`); updateCubeUI(); renderCubes(); } } });
+    document.getElementById('claimBlockRewardBtn').onclick = () => withUserAuth('领取暴块奖励', () => { if(pendingBlockReward<=0) showToast("无奖励",true); else { userNexBalance += pendingBlockReward; withdrawable.nex += pendingBlockReward; updateUI(); pendingBlockReward=0; updateCubeUI(); showToast("领取成功"); } });
     startTimer(); renderCubes(); updateCubeUI();
     
-    document.getElementById('whitepaperLink').onclick = (e)=>{ e.preventDefault(); alert("📄 NeuroCore 白皮书\n- 链上实时读取USDT余额\n- IndexedDB数据库保存用户数据\n- 支持空投调用"); };
-    document.getElementById('docsLink').onclick = (e)=>{ e.preventDefault(); alert("📘 文档\n1. 连接钱包后自动读取链上USDT余额\n2. 用户数据保存至本地数据库\n3. 支持数据恢复和空投记录"); };
-    
-    initDatabase().then(() => console.log('数据库初始化完成')).catch(e => console.log('数据库错误', e));
+    initDatabase().then(() => loadStats());
     updateUI();
-    showToast('✅ 系统已启动 | 链上实时读取USDT余额 | 数据已保存至数据库');
+    showToast('✅ 系统已启动 | 白皮书点击顶部链接 | 地址统计已开启');
 })();
 </script>
 </body>
